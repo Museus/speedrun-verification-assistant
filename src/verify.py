@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 import logging
 from statistics import mean
 import tempfile
@@ -18,7 +17,10 @@ def process_image(img_rgb, count, targets):
     threads = [
         threading.Thread(
             target=trackable.process,
-            args=(img_gray, count,)
+            args=(
+                img_gray,
+                count,
+            ),
         )
         for trackable in targets.values()
     ]
@@ -32,6 +34,7 @@ def process_image(img_rgb, count, targets):
     for thread in threads:
         thread.join()
 
+
 def process_video(file_name):
     capture = cv2.VideoCapture(file_name)
     starting_ms = 0
@@ -42,61 +45,72 @@ def process_video(file_name):
 
     try:
         hades_door_ndarray = cv2.imread(f"templates/{video_height}p/hades_door.png", 0)
-        reward_flare_ndarray = cv2.imread(f"templates/{video_height}p/reward_flare.png", 0)
-        hades_title_ndarray = cv2.imread(f"templates/{video_height}p/hades_title.png", 0)
+        reward_flare_ndarray = cv2.imread(
+            f"templates/{video_height}p/reward_flare.png", 0
+        )
+        hades_title_ndarray = cv2.imread(
+            f"templates/{video_height}p/hades_title.png", 0
+        )
     except Exception as exc:
         logging.error("Illegal resolution!")
         logging.exception(exc)
         raise
 
     targets["hades_door"] = FirstAppearance("hades_door", hades_door_ndarray)
-    targets["start"] = DependentAppearance("start", reward_flare_ndarray, targets["hades_door"])
+    targets["start"] = DependentAppearance(
+        "start", reward_flare_ndarray, targets["hades_door"]
+    )
     targets["end"] = LastDisappearance("end", hades_title_ndarray, threshold=0.6)
 
     run_fps = capture.get(cv2.CAP_PROP_FPS)
     logging.debug("VOD framerate: " + run_fps + "fps")
     totalNoFrames = capture.get(cv2.CAP_PROP_FRAME_COUNT)
-    count = run_fps/1000*starting_ms
+    count = run_fps / 1000 * starting_ms
     progress_bar = 0
 
     while True:
         grabbed, frame = capture.read()
         if not grabbed:
-            break         # loop and a half construct is useful
-
+            break
 
         preprocess = time.time()
         process_image(frame, count, targets)
         postprocess = time.time()
 
         count += 1
-        duration.append(postprocess-preprocess)
+        duration.append(postprocess - preprocess)
 
-        if (new_progress := count*100 // totalNoFrames) > progress_bar+9:
+        if (new_progress := count * 100 // totalNoFrames) > progress_bar + 9:
             progress_bar = new_progress
-            print(f"{progress_bar}% done, rolling average {1/mean(duration):.2f}fps ({1/mean(duration)/run_fps:.1f}x speed)")
+            print(
+                f"{progress_bar}% done, rolling average {1/mean(duration):.2f}fps ({1/mean(duration)/run_fps:.1f}x speed)"
+            )
             duration = list()
 
-    # for name, trackable in targets.items():
-    #     print(f"{name}: {trackable}")
-    #     trackable.write_instances(Path("output"))
+    run_duration = targets["end"].get_timestamp(run_fps) - targets[
+        "start"
+    ].get_timestamp(run_fps)
 
-    run_duration = targets["end"].get_timestamp(run_fps)-targets["start"].get_timestamp(run_fps)
-
-    print('\n'.join([
-        f"Run analysis:",
-        f"\tStart: {targets['start'].get_timestamp(run_fps, pretty=True)} (frame {targets['start'].triggered_at})",
-        f"\tEnd: {targets['end'].get_timestamp(run_fps, pretty=True)} (frame {targets['end'].triggered_at})",
-        f"\tDuration RTA: {prettify_timestamp(run_duration)}",
-    ]))
+    print(
+        "\n".join(
+            [
+                f"Run analysis:",
+                f"\tStart: {targets['start'].get_timestamp(run_fps, pretty=True)} (frame {targets['start'].triggered_at})",
+                f"\tEnd: {targets['end'].get_timestamp(run_fps, pretty=True)} (frame {targets['end'].triggered_at})",
+                f"\tDuration RTA: {prettify_timestamp(run_duration)}",
+            ]
+        )
+    )
 
 
 # Initialize parser
 parser = argparse.ArgumentParser()
 
 # Adding optional argument
-parser.add_argument("url", nargs='?', help = "URL to video")
-parser.add_argument("-s", "--skip", type=int, default=0, help="Number of SRC runs to skip (max 19)")
+parser.add_argument("url", nargs="?", help="URL to video")
+parser.add_argument(
+    "-s", "--skip", type=int, default=0, help="Number of SRC runs to skip (max 19)"
+)
 
 # Read arguments from command line
 args = parser.parse_args()
@@ -119,5 +133,12 @@ if not args.url:
 
 URLS = [run_info["url"]]
 with tempfile.TemporaryDirectory() as output:
-    with YoutubeDL(params={"paths": {"temp": output}, "post_hooks": [process_video], "format_sort": ["+res:480"], "quiet": True}) as ydl:
+    with YoutubeDL(
+        params={
+            "paths": {"temp": output},
+            "post_hooks": [process_video],
+            "format_sort": ["+res:480"],
+            "quiet": True,
+        }
+    ) as ydl:
         ydl.download(URLS)

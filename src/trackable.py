@@ -5,6 +5,7 @@ from numpy import ndarray, where
 
 from util import prettify_timestamp
 
+
 class Trackable:
 
     name: str
@@ -26,6 +27,7 @@ class Trackable:
 
     def process(self):
         pass
+
 
 class FirstAppearance(Trackable):
 
@@ -70,13 +72,9 @@ class FirstAppearance(Trackable):
         if self.triggered:
             return
 
-        target_array = cv2.matchTemplate(
-            image,
-            self.indicator,
-            cv2.TM_CCOEFF_NORMED
-        )
+        target_array = cv2.matchTemplate(image, self.indicator, cv2.TM_CCOEFF_NORMED)
 
-        if len(where( target_array >= self.threshold)[0]):
+        if len(where(target_array >= self.threshold)[0]):
             self.frame = image
             self.frame_count = frame_count
 
@@ -94,6 +92,7 @@ class DependentAppearance(FirstAppearance):
             return
 
         super().process(image, frame)
+
 
 class FirstDisappearance(Trackable):
 
@@ -146,13 +145,9 @@ class FirstDisappearance(Trackable):
         if self.triggered:
             return
 
-        target_array = cv2.matchTemplate(
-            image,
-            self.indicator,
-            cv2.TM_CCOEFF_NORMED
-        )
+        target_array = cv2.matchTemplate(image, self.indicator, cv2.TM_CCOEFF_NORMED)
 
-        found = len(where( target_array >= self.threshold)[0])
+        found = len(where(target_array >= self.threshold)[0])
         if self.appeared_at is None and found:
             self.appeared_frame = image
             self.appeared_at = frame
@@ -211,13 +206,9 @@ class LastDisappearance(Trackable):
         return seconds
 
     def process(self, image, frame):
-        target_array = cv2.matchTemplate(
-            image,
-            self.indicator,
-            cv2.TM_CCOEFF_NORMED
-        )
+        target_array = cv2.matchTemplate(image, self.indicator, cv2.TM_CCOEFF_NORMED)
 
-        found = len(where( target_array >= self.threshold)[0])
+        found = len(where(target_array >= self.threshold)[0])
         if self.appeared_at is None and found:
             self.appeared_frame = image
             self.appeared_at = frame
