@@ -16,11 +16,11 @@ def prettify_timestamp(seconds):
     return " ".join(time_portions)
 
 
-def get_next_run_from_srcom():
+def get_next_run_from_srcom(skip=0):
     try:
         runs = requests.get("https://speedrun.com/api/v1/runs?game=o1y9okr6&status=new&embed=category,players").json()["data"]
     except Exception:
         print("Failed to get latest runs!")
 
     if runs:
-        return runs[0]
+        return runs[skip]

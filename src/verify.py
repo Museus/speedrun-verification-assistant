@@ -94,6 +94,7 @@ parser = argparse.ArgumentParser()
 
 # Adding optional argument
 parser.add_argument("url", nargs='?', help = "URL to video")
+parser.add_argument("-s", "--skip", type=int, default=0, help="Number of SRC runs to skip (max 19)")
 
 # Read arguments from command line
 args = parser.parse_args()
@@ -106,7 +107,7 @@ run_info = {
 
 if not args.url:
     print("Getting most recent unverified run...")
-    run = get_next_run_from_srcom()
+    run = get_next_run_from_srcom(skip=args.skip)
     run_info["category"] = run["category"]["data"]["name"]
     for player in run["players"]["data"]:
         run_info["players"].append(player["names"]["international"])
