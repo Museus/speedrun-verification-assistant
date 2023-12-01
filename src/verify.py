@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import logging
 from statistics import mean
 import tempfile
 import threading
@@ -44,8 +45,8 @@ def process_video(file_name):
         reward_flare_ndarray = cv2.imread(f"templates/{video_height}p/reward_flare.png", 0)
         hades_title_ndarray = cv2.imread(f"templates/{video_height}p/hades_title.png", 0)
     except Exception as exc:
-        print("Illegal resolution!")
-        print(exc)
+        logging.error("Illegal resolution!")
+        logging.exception(exc)
         raise
 
     targets["hades_door"] = FirstAppearance("hades_door", hades_door_ndarray)
@@ -53,6 +54,7 @@ def process_video(file_name):
     targets["end"] = LastDisappearance("end", hades_title_ndarray, threshold=0.6)
 
     run_fps = capture.get(cv2.CAP_PROP_FPS)
+    logging.debug("VOD framerate: " + run_fps + "fps")
     totalNoFrames = capture.get(cv2.CAP_PROP_FRAME_COUNT)
     count = run_fps/1000*starting_ms
     progress_bar = 0
